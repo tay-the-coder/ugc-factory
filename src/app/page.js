@@ -203,6 +203,7 @@ export default function Home() {
                         e.stopPropagation();
                         if (confirm(`Delete "${p.name}"?`)) {
                           deleteProject(p.id);
+                          setShowProjectManager(false);
                         }
                       }}
                       title="Delete"

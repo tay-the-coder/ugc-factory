@@ -225,20 +225,33 @@ export function useProject() {
    * Delete project
    */
   const deleteProject = useCallback((projectId) => {
-    const { [projectId]: deleted, ...remaining } = projects;
-    setProjectsState(remaining);
-    saveProjects(remaining);
-
-    // If deleting current project, switch to another or create new
-    if (project.id === projectId) {
-      const otherIds = Object.keys(remaining);
-      if (otherIds.length > 0) {
-        switchProject(otherIds[0]);
-      } else {
-        createProject();
+    setProjectsState(prev => {
+      const { [projectId]: deleted, ...remaining } = prev;
+      
+      // Save immediately
+      saveProjects(remaining);
+      
+      // If deleting current project, switch to another or create new
+      if (project.id === projectId) {
+        const otherIds = Object.keys(remaining);
+        if (otherIds.length > 0) {
+          // Switch to first remaining project
+          const nextProject = remaining[otherIds[0]];
+          setProjectState(nextProject);
+          saveCurrentProjectId(nextProject.id);
+        } else {
+          // Create new project
+          const newProj = createDefaultProject();
+          remaining[newProj.id] = newProj;
+          saveProjects(remaining);
+          setProjectState(newProj);
+          saveCurrentProjectId(newProj.id);
+        }
       }
-    }
-  }, [projects, project.id, switchProject, createProject]);
+      
+      return remaining;
+    });
+  }, [project.id]);
 
   /**
    * Duplicate project
