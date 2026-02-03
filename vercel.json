@@ -1,0 +1,28 @@
+{
+  "functions": {
+    "src/app/api/market-research/route.js": {
+      "maxDuration": 120
+    },
+    "src/app/api/ai-generate/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/analyze-product/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-character/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-aroll/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-broll/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-video/route.js": {
+      "maxDuration": 120
+    },
+    "src/app/api/animate-broll/route.js": {
+      "maxDuration": 120
+    }
+  }
+}

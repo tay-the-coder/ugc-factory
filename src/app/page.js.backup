@@ -1,0 +1,2469 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { useProject, useAdvancedMode } from '../lib/useProject.js';
+import { 
+  AdvancedPanel, 
+  ModelSelector, 
+  AspectRatioSelector, 
+  SliderParam,
+  DurationSelector,
+  PromptEditor,
+  UploadOverride,
+  ModeToggle,
+  NegativePrompt,
+  QuickPresets
+} from '../components/AdvancedPanel.js';
+import { ARollCard, BRollCard, AnimationCard } from '../components/SegmentCard.js';
+import { AIField } from '../components/AIField.js';
+
+const STEPS = [
+  { id: 1, name: 'Product', description: 'Upload your product' },
+  { id: 2, name: 'Research', description: 'Deep market analysis' },
+  { id: 3, name: 'Character', description: 'Create your UGC creator' },
+  { id: 4, name: 'Script', description: 'Write or generate script' },
+  { id: 5, name: 'A-Roll', description: 'Generate talking head' },
+  { id: 6, name: 'B-Roll', description: 'Create supporting scenes' },
+  { id: 7, name: 'Animation', description: 'Bring B-roll to life' },
+  { id: 8, name: 'Voice', description: 'Generate voiceover' },
+  { id: 9, name: 'Export', description: 'Download your assets' }
+];
+
+export default function Home() {
+  const [currentStep, setCurrentStep] = useState(1);
+  const { 
+    project, 
+    setProject, 
+    isLoaded,
+    advancedSettings,
+    setAdvancedSettings,
+    projectList,
+    createProject,
+    switchProject,
+    deleteProject,
+    duplicateProject,
+    renameProject,
+    resetProject
+  } = useProject();
+  
+  const [showProjectManager, setShowProjectManager] = useState(false);
+
+  // Show loading state until project is loaded from localStorage
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-white font-bold text-lg">U</span>
+          </div>
+          <p className="text-gray-500">Loading project...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-lg">U</span>
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-black">UGC Factory</h1>
+              <p className="text-sm text-gray-500">AI-powered ad creation</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Project name (editable) */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">{project.name}</span>
+              <button 
+                onClick={() => {
+                  const name = prompt('Project name:', project.name);
+                  if (name) renameProject(name);
+                }}
+                className="text-gray-400 hover:text-black"
+              >
+                ✏️
+              </button>
+            </div>
+            
+            <button 
+              className="btn-ghost"
+              onClick={() => setShowProjectManager(!showProjectManager)}
+            >
+              Projects
+            </button>
+            <button className="btn-ghost">Templates</button>
+            <button 
+              className="btn-primary"
+              onClick={() => {
+                const name = prompt('New project name:', 'Untitled Project');
+                if (name) {
+                  createProject(name);
+                  setCurrentStep(1);
+                }
+              }}
+            >
+              New Project
+            </button>
+          </div>
+        </div>
+        
+        {/* Project Manager Dropdown */}
+        {showProjectManager && (
+          <div className="absolute right-6 top-16 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+            <div className="p-4 border-b border-gray-100">
+              <h3 className="font-semibold text-black">Your Projects</h3>
+              <p className="text-xs text-gray-500 mt-1">{projectList.length} projects</p>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {projectList.map(p => (
+                <div 
+                  key={p.id}
+                  className={`p-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ${
+                    p.id === project.id ? 'bg-gray-50' : ''
+                  }`}
+                  onClick={() => {
+                    switchProject(p.id);
+                    setShowProjectManager(false);
+                  }}
+                >
+                  <div>
+                    <div className="font-medium text-sm text-black flex items-center gap-2">
+                      {p.name}
+                      {p.id === project.id && <span className="text-xs text-green-500">●</span>}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {new Date(p.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-100 flex gap-1">
+                    <button 
+                      className="p-1 hover:bg-gray-200 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateProject(p.id);
+                      }}
+                      title="Duplicate"
+                    >
+                      📋
+                    </button>
+                    <button 
+                      className="p-1 hover:bg-red-100 rounded text-red-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete "${p.name}"?`)) {
+                          deleteProject(p.id);
+                        }
+                      }}
+                      title="Delete"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </header>
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Progress Steps */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between relative">
+            <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 -z-10">
+              <div 
+                className="h-full bg-black transition-all duration-500"
+                style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
+              />
+            </div>
+            
+            {STEPS.map((step) => (
+              <div key={step.id} className="flex flex-col items-center">
+                <button
+                  onClick={() => step.id <= currentStep && setCurrentStep(step.id)}
+                  className={`
+                    w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
+                    transition-all z-10 bg-white
+                    ${step.id === currentStep ? 'bg-black text-white ring-4 ring-gray-100' : ''}
+                    ${step.id < currentStep ? 'bg-green-500 text-white' : ''}
+                    ${step.id > currentStep ? 'bg-gray-100 text-gray-400' : ''}
+                    ${step.id <= currentStep ? 'cursor-pointer hover:scale-110' : 'cursor-not-allowed'}
+                  `}
+                >
+                  {step.id < currentStep ? '✓' : step.id}
+                </button>
+                <span className={`
+                  mt-2 text-xs font-medium
+                  ${step.id === currentStep ? 'text-black' : 'text-gray-400'}
+                `}>
+                  {step.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="animate-slide-up">
+          {currentStep === 1 && (
+            <ProductStep 
+              project={project} 
+              setProject={setProject}
+              onNext={() => setCurrentStep(2)}
+            />
+          )}
+          {currentStep === 2 && (
+            <ResearchStep 
+              project={project} 
+              setProject={setProject}
+              onNext={() => setCurrentStep(3)}
+              onBack={() => setCurrentStep(1)}
+            />
+          )}
+          {currentStep === 3 && (
+            <CharacterStep 
+              project={project} 
+              setProject={setProject}
+              advancedSettings={advancedSettings.character}
+              setAdvancedSettings={(s) => setAdvancedSettings('character', s)}
+              onNext={() => setCurrentStep(4)}
+              onBack={() => setCurrentStep(2)}
+            />
+          )}
+          {currentStep === 4 && (
+            <ScriptStep 
+              project={project} 
+              setProject={setProject}
+              onNext={() => setCurrentStep(5)}
+              onBack={() => setCurrentStep(3)}
+            />
+          )}
+          {currentStep === 5 && (
+            <ARollStep 
+              project={project} 
+              setProject={setProject}
+              advancedSettings={advancedSettings.aroll}
+              setAdvancedSettings={(s) => setAdvancedSettings('aroll', s)}
+              onNext={() => setCurrentStep(6)}
+              onBack={() => setCurrentStep(4)}
+            />
+          )}
+          {currentStep === 6 && (
+            <BRollStep 
+              project={project} 
+              setProject={setProject}
+              advancedSettings={advancedSettings.broll}
+              setAdvancedSettings={(s) => setAdvancedSettings('broll', s)}
+              onNext={() => setCurrentStep(7)}
+              onBack={() => setCurrentStep(5)}
+            />
+          )}
+          {currentStep === 7 && (
+            <AnimationStep 
+              project={project} 
+              setProject={setProject}
+              advancedSettings={advancedSettings.animation}
+              setAdvancedSettings={(s) => setAdvancedSettings('animation', s)}
+              onNext={() => setCurrentStep(8)}
+              onBack={() => setCurrentStep(6)}
+            />
+          )}
+          {currentStep === 8 && (
+            <VoiceStep 
+              project={project} 
+              setProject={setProject}
+              advancedSettings={advancedSettings.voice}
+              setAdvancedSettings={(s) => setAdvancedSettings('voice', s)}
+              onNext={() => setCurrentStep(9)}
+              onBack={() => setCurrentStep(7)}
+            />
+          )}
+          {currentStep === 9 && (
+            <ExportStep 
+              project={project}
+              onBack={() => setCurrentStep(8)}
+              onReset={() => {
+                if (confirm('Start a new project? Your current project will be saved.')) {
+                  createProject();
+                  setCurrentStep(1);
+                }
+              }}
+            />
+          )}
+        </div>
+      </div>
+      
+      {/* Auto-save indicator */}
+      <div className="fixed bottom-4 left-4 text-xs text-gray-400">
+        Auto-saved • {new Date(project.updatedAt).toLocaleTimeString()}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 1: Product Upload
+// ============================================================================
+function ProductStep({ project, setProject, onNext }) {
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+  const [productImages, setProductImages] = useState(project.product?.images || []);
+  const [productName, setProductName] = useState(project.product?.name || '');
+  const [productDescription, setProductDescription] = useState(project.product?.description || '');
+  const [targetAudience, setTargetAudience] = useState(project.targetAudience || '');
+  const [productCategory, setProductCategory] = useState(project.product?.category || 'holdable');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(project.product?.analysis || null);
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('product');
+  const [skipAnalysis, setSkipAnalysis] = useState(false);
+
+  const MAX_IMAGES = 10;
+
+  // Auto-save changes to project as they happen
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setProject(prev => ({
+        ...prev,
+        product: {
+          ...prev.product,
+          name: productName,
+          description: productDescription,
+          category: productCategory,
+          images: productImages,
+          image: productImages[0] || null,
+          analysis: analysisResult
+        },
+        targetAudience
+      }));
+    }, 500); // Debounce 500ms
+    
+    return () => clearTimeout(timeoutId);
+  }, [productImages, productName, productDescription, productCategory, targetAudience, analysisResult]);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    processImages(files);
+  };
+
+  const processImages = (files) => {
+    const remaining = MAX_IMAGES - productImages.length;
+    const toProcess = files.slice(0, remaining);
+    
+    toProcess.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProductImages(prev => [...prev, e.target.result].slice(0, MAX_IMAGES));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index) => {
+    setProductImages(prev => prev.filter((_, i) => i !== index));
+    setAnalysisResult(null);
+  };
+
+  const analyzeProducts = async () => {
+    if (productImages.length === 0) return;
+    setAnalyzing(true);
+    try {
+      const res = await fetch('/api/analyze-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          images: productImages,
+          context: { brandName: productName }
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.product) {
+        setAnalysisResult(data.product);
+        const p = data.product;
+        
+        if (p.name) setProductName(p.name);
+        
+        const descParts = [];
+        if (p.benefits?.primary) descParts.push(p.benefits.primary);
+        if (p.functionalFeatures?.length) descParts.push(p.functionalFeatures.join('. '));
+        if (p.positioning?.usp) descParts.push(`USP: ${p.positioning.usp}`);
+        if (descParts.length) setProductDescription(descParts.join('. '));
+        
+        const demoParts = [];
+        if (p.targetDemographic?.ageRange) demoParts.push(`Age ${p.targetDemographic.ageRange}`);
+        if (p.targetDemographic?.gender && p.targetDemographic.gender !== 'all') {
+          demoParts.push(p.targetDemographic.gender);
+        }
+        if (p.targetDemographic?.lifestyle?.length) {
+          demoParts.push(p.targetDemographic.lifestyle.join(', '));
+        }
+        if (p.targetDemographic?.painPoints?.length) {
+          demoParts.push(`who struggle with: ${p.targetDemographic.painPoints.join(', ')}`);
+        }
+        if (demoParts.length) setTargetAudience(demoParts.join(' • '));
+        
+        if (p.category) {
+          const cat = p.category.toLowerCase();
+          if (cat.includes('wear') || cat.includes('cloth') || cat.includes('fashion')) {
+            setProductCategory('wearable');
+          } else if (cat.includes('skincare') || cat.includes('beauty') || cat.includes('cosmetic')) {
+            setProductCategory('usable');
+          }
+        }
+      } else {
+        console.error('Analysis failed:', data.error);
+        setAnalysisResult({ error: data.error || 'Analysis failed' });
+      }
+    } catch (err) {
+      console.error('Analysis failed:', err);
+      setAnalysisResult({ error: err.message });
+    }
+    setAnalyzing(false);
+  };
+
+  const handleSubmit = () => {
+    setProject(prev => ({
+      ...prev,
+      product: {
+        name: productName,
+        description: productDescription,
+        category: productCategory,
+        images: productImages,
+        image: productImages[0],
+        analysis: analysisResult
+      },
+      targetAudience
+    }));
+    onNext();
+  };
+
+  const isValid = productImages.length > 0 && productName && targetAudience;
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Upload Your Product</h2>
+        <p className="text-gray-500">Add a clear product photo and define your target audience</p>
+      </div>
+
+      <div 
+        className={`upload-zone mb-6 ${dragActive ? 'upload-zone-active' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={handleDrop}
+        onClick={() => productImages.length < MAX_IMAGES && fileInputRef.current?.click()}
+      >
+        {productImages.length > 0 ? (
+          <div className="w-full">
+            <div className="grid grid-cols-5 gap-3 mb-4">
+              {productImages.map((img, idx) => (
+                <div key={idx} className="relative aspect-square">
+                  <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover rounded-lg" />
+                  <button 
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full hover:bg-red-600 text-sm font-bold"
+                    onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                  >×</button>
+                </div>
+              ))}
+              {productImages.length < MAX_IMAGES && (
+                <div 
+                  className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-gray-400"
+                  onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                >
+                  <span className="text-2xl text-gray-400">+</span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 text-center">{productImages.length}/{MAX_IMAGES} images</p>
+          </div>
+        ) : (
+          <>
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-gray-600 font-medium">Drop up to 10 product images here</p>
+            <p className="text-gray-400 text-sm mt-1">or click to browse</p>
+          </>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+          onChange={(e) => e.target.files?.length && processImages(Array.from(e.target.files))} />
+      </div>
+
+      {/* AI Analysis Button */}
+      {productImages.length > 0 && !skipAnalysis && (
+        <div className="mb-6">
+          <button
+            onClick={analyzeProducts}
+            disabled={analyzing}
+            className={`w-full py-3 px-4 rounded-xl font-medium transition-all ${
+              analyzing 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600'
+            }`}
+          >
+            {analyzing ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Analyzing with AI...
+              </span>
+            ) : (
+              <span>✨ Analyze Product with AI</span>
+            )}
+          </button>
+          {analysisResult && (
+            analysisResult.error ? (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
+                  <span>✗</span> Analysis Failed
+                </div>
+                <div className="text-sm text-red-600">{analysisResult.error}</div>
+              </div>
+            ) : (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <div className="flex items-center gap-2 text-green-700 font-medium mb-3">
+                  <span>✓</span> Analysis Complete - Fields Auto-Filled!
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex gap-2">
+                    <span className="text-green-700 font-medium w-24">Product:</span>
+                    <span className="text-green-600">{analysisResult.name} ({analysisResult.category})</span>
+                  </div>
+                  {analysisResult.positioning?.usp && (
+                    <div className="flex gap-2">
+                      <span className="text-green-700 font-medium w-24">USP:</span>
+                      <span className="text-green-600">{analysisResult.positioning.usp}</span>
+                    </div>
+                  )}
+                  {analysisResult.benefits?.primary && (
+                    <div className="flex gap-2">
+                      <span className="text-green-700 font-medium w-24">Benefit:</span>
+                      <span className="text-green-600">{analysisResult.benefits.primary}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+          <input type="text" className="input" placeholder="e.g., Premium Heated Pad"
+            value={productName} onChange={(e) => setProductName(e.target.value)} />
+        </div>
+
+        <AIField
+          label="Product Description (optional)"
+          value={productDescription}
+          onChange={setProductDescription}
+          placeholder="Key features, benefits..."
+          rows={3}
+          promptType="description"
+          context={{
+            productName: productName,
+            productInfo: analysisResult ? JSON.stringify(analysisResult) : ''
+          }}
+        />
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Product Type</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { id: 'holdable', label: 'Holdable', desc: 'Bottles, devices, tools' },
+              { id: 'wearable', label: 'Wearable', desc: 'Clothing, accessories' },
+              { id: 'usable', label: 'Usable', desc: 'Applied or used on body' }
+            ].map(cat => (
+              <button key={cat.id}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  productCategory === cat.id ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setProductCategory(cat.id)}
+              >
+                <div className="font-medium text-black">{cat.label}</div>
+                <div className="text-xs text-gray-500 mt-1">{cat.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <AIField
+          label="Target Audience"
+          value={targetAudience}
+          onChange={setTargetAudience}
+          placeholder="e.g., Women 25-45 who struggle with back pain, work from home..."
+          rows={2}
+          promptType="audience"
+          context={{
+            productName: productName,
+            productDescription: productDescription,
+            productInfo: analysisResult ? JSON.stringify(analysisResult) : ''
+          }}
+        />
+      </div>
+
+      {/* Advanced Panel */}
+      <AdvancedPanel 
+        title="Advanced Options" 
+        isOpen={advancedMode} 
+        onToggle={toggleAdvanced}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <input 
+              type="checkbox" 
+              id="skipAnalysis"
+              checked={skipAnalysis}
+              onChange={(e) => setSkipAnalysis(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <label htmlFor="skipAnalysis" className="text-sm text-gray-700">
+              Skip AI analysis (fill fields manually)
+            </label>
+          </div>
+          
+          <div className="p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
+            <strong>Power user tip:</strong> If you already have detailed product info, 
+            skip the analysis to save API costs and time. Just fill in the fields manually.
+          </div>
+        </div>
+      </AdvancedPanel>
+
+      <div className="mt-8 flex justify-end">
+        <button className={`btn-primary ${!isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isValid} onClick={handleSubmit}>
+          Continue to Research
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 2: Market Research
+// ============================================================================
+function ResearchStep({ project, setProject, onNext, onBack }) {
+  const [researching, setResearching] = useState(false);
+  const [progress, setProgress] = useState([]);
+  const [research, setResearch] = useState(project.research || null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('research');
+  const [customSubreddits, setCustomSubreddits] = useState('');
+  
+  // Derive category from product analysis (used internally, not shown to user)
+  const productCategory = (() => {
+    const analysis = project.product?.analysis;
+    if (!analysis?.category) return 'general';
+    
+    const cat = analysis.category.toLowerCase();
+    if (cat.includes('beauty') || cat.includes('skincare') || cat.includes('cosmetic')) return 'beauty';
+    if (cat.includes('fitness') || cat.includes('health') || cat.includes('supplement') || cat.includes('workout')) return 'fitness';
+    if (cat.includes('tech') || cat.includes('gadget') || cat.includes('electronic')) return 'tech';
+    if (cat.includes('home') || cat.includes('kitchen') || cat.includes('furniture')) return 'home';
+    if (cat.includes('pet') || cat.includes('dog') || cat.includes('cat')) return 'pets';
+    if (cat.includes('wellness') || cat.includes('pain') || cat.includes('relief') || cat.includes('sleep')) return 'wellness';
+    return 'general';
+  })();
+
+  const runResearch = async () => {
+    setResearching(true);
+    setProgress([{ step: 'Starting research...', status: 'running' }]);
+
+    try {
+      const res = await fetch('/api/market-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: project.product?.name,
+          productCategory,
+          targetAudience: project.targetAudience,
+          customSubreddits: customSubreddits.split(',').map(s => s.trim()).filter(Boolean),
+          step: 'full'
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.research) {
+        setResearch(data.research);
+        setProgress(data.research.steps || []);
+      } else {
+        setProgress([{ step: 'Research failed', status: 'failed', error: data.error }]);
+      }
+    } catch (error) {
+      console.error('Research error:', error);
+      setProgress([{ step: 'Research failed', status: 'failed', error: error.message }]);
+    }
+
+    setResearching(false);
+  };
+
+  const handleNext = () => {
+    setProject(prev => ({ ...prev, research }));
+    onNext();
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Deep Market Research</h2>
+        <p className="text-gray-500">AI-powered analysis of Reddit, Amazon reviews, and more</p>
+      </div>
+
+      {!research ? (
+        <div className="card">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="text-4xl">🔍</span>
+            </div>
+            <h3 className="text-lg font-semibold text-black mb-2">
+              Research "{project.product?.name}"
+            </h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              AI analyzes Reddit discussions, Amazon reviews, and customer forums to find 
+              pain points, language patterns, and creative angles for your ads.
+            </p>
+            <p className="text-sm text-gray-400 mt-3">
+              ⏱️ Takes 60-90 seconds • <span className="text-gray-500">This step is optional</span>
+            </p>
+          </div>
+
+          {/* Advanced Research Options */}
+          <AdvancedPanel 
+            title="Research Options" 
+            isOpen={advancedMode} 
+            onToggle={toggleAdvanced}
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">
+                  Custom Subreddits (comma-separated)
+                </label>
+                <input 
+                  type="text"
+                  className="input text-sm"
+                  placeholder="e.g., SkincareAddiction, beauty, 30PlusSkinCare"
+                  value={customSubreddits}
+                  onChange={(e) => setCustomSubreddits(e.target.value)}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Add specific subreddits relevant to your product niche
+                </p>
+              </div>
+            </div>
+          </AdvancedPanel>
+
+          {researching && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <svg className="animate-spin w-5 h-5 text-black" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="font-medium">Running deep research...</span>
+              </div>
+              <p className="text-sm text-gray-500">
+                Analyzing Reddit discussions, Amazon reviews, building customer avatar, generating creative angles...
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button className="btn-primary flex-1" onClick={runResearch} disabled={researching}>
+              {researching ? 'Researching...' : '🔍 Run Deep Research'}
+            </button>
+            <button className="btn-secondary" onClick={onNext} disabled={researching}>
+              Skip →
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* Tab Navigation */}
+          <div className="flex gap-2 mb-6 border-b border-gray-200">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'avatar', label: 'Customer Avatar' },
+              { id: 'painpoints', label: 'Pain Points' },
+              { id: 'angles', label: 'Creative Angles' }
+            ].map(tab => (
+              <button key={tab.id}
+                className={`px-4 py-3 font-medium text-sm border-b-2 transition-all ${
+                  activeTab === tab.id 
+                    ? 'border-black text-black' 
+                    : 'border-transparent text-gray-500 hover:text-black'
+                }`}
+                onClick={() => setActiveTab(tab.id)}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="card">
+                <h4 className="font-semibold text-black mb-3">📊 Research Summary</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Pain Points Found</span>
+                    <span className="font-medium">{research.reddit?.painPoints?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Creative Angles</span>
+                    <span className="font-medium">{research.angles?.hookAngles?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Review Insights</span>
+                    <span className="font-medium">{research.amazon?.purchaseTriggers?.length || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-3">🎯 Top Pain Points</h4>
+                <ul className="space-y-2 text-sm">
+                  {(research.reddit?.painPoints || []).slice(0, 4).map((point, i) => (
+                    <li key={i} className="text-gray-600">• {point}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-3">💡 Top Hook Ideas</h4>
+                <ul className="space-y-2 text-sm">
+                  {(research.angles?.hookAngles || []).slice(0, 3).map((hook, i) => (
+                    <li key={i} className="text-gray-600">• {hook.hookLine}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Avatar Tab */}
+          {activeTab === 'avatar' && research.avatar && (
+            <div className="grid grid-cols-2 gap-6">
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">👤 Customer Profile</h4>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Name</span>
+                    <p className="font-medium">{research.avatar.avatar?.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Age</span>
+                    <p className="font-medium">{research.avatar.avatar?.age}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Location</span>
+                    <p className="font-medium">{research.avatar.avatar?.location}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Family</span>
+                    <p className="font-medium">{research.avatar.avatar?.family}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">🧠 Psychographics</h4>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Fears</span>
+                    <ul className="mt-1 space-y-1">
+                      {(research.avatar.psychographics?.fears || []).map((f, i) => (
+                        <li key={i} className="text-sm text-gray-600">• {f}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Frustrations</span>
+                    <ul className="mt-1 space-y-1">
+                      {(research.avatar.psychographics?.frustrations || []).map((f, i) => (
+                        <li key={i} className="text-sm text-gray-600">• {f}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card col-span-2">
+                <h4 className="font-semibold text-black mb-4">💬 Language Profile</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">How they describe the problem</span>
+                    <ul className="mt-2 space-y-1">
+                      {(research.avatar.languageProfile?.problemDescriptions || []).map((p, i) => (
+                        <li key={i} className="text-sm text-gray-600 italic">"{p}"</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Emotional phrases</span>
+                    <ul className="mt-2 space-y-1">
+                      {(research.avatar.languageProfile?.emotionalPhrases || []).map((p, i) => (
+                        <li key={i} className="text-sm text-gray-600 italic">"{p}"</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pain Points Tab */}
+          {activeTab === 'painpoints' && (
+            <div className="grid grid-cols-2 gap-6">
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">😤 Reddit Pain Points</h4>
+                <ul className="space-y-2">
+                  {(research.reddit?.painPoints || []).map((point, i) => (
+                    <li key={i} className="p-3 bg-red-50 rounded-lg text-sm text-red-800">{point}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">⭐ What They Love</h4>
+                <ul className="space-y-2">
+                  {(research.reddit?.praises || []).map((praise, i) => (
+                    <li key={i} className="p-3 bg-green-50 rounded-lg text-sm text-green-800">{praise}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">❓ Common Questions</h4>
+                <ul className="space-y-2">
+                  {(research.reddit?.questions || []).map((q, i) => (
+                    <li key={i} className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">{q}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">🛒 Purchase Triggers</h4>
+                <ul className="space-y-2">
+                  {(research.amazon?.purchaseTriggers || []).map((t, i) => (
+                    <li key={i} className="p-3 bg-yellow-50 rounded-lg text-sm text-yellow-800">{t}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Creative Angles Tab */}
+          {activeTab === 'angles' && research.angles && (
+            <div className="space-y-6">
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">🎣 Hook Angles ({research.angles.hookAngles?.length || 0})</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {(research.angles.hookAngles || []).map((hook, i) => (
+                    <div key={i} className="p-4 bg-gray-50 rounded-lg">
+                      <p className="font-medium text-black mb-2">"{hook.hookLine}"</p>
+                      <p className="text-xs text-gray-500">{hook.angle}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">🔥 Pain Point Scripts</h4>
+                <div className="space-y-3">
+                  {(research.angles.painPointScripts || []).map((script, i) => (
+                    <div key={i} className="p-4 bg-gray-50 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Pain: {script.painPoint}</p>
+                      <p className="font-medium text-black">"{script.openingLine}"</p>
+                      {script.followUp && <p className="text-sm text-gray-600 mt-1">{script.followUp}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card">
+                <h4 className="font-semibold text-black mb-4">✨ Transformation Angles</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  {(research.angles.transformationAngles || []).map((trans, i) => (
+                    <div key={i} className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-xs text-gray-500 mb-2">Before → After</div>
+                      <p className="text-sm"><span className="text-red-600">{trans.before}</span> → <span className="text-green-600">{trans.after}</span></p>
+                      <p className="font-medium text-black mt-2">"{trans.hookLine}"</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end">
+            <button className="btn-secondary mr-3" onClick={() => {
+              if (confirm('Re-run research? This will replace your current research data.')) {
+                setResearch(null);
+              }
+            }}>
+              Re-run Research
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className="btn-primary" onClick={handleNext}>
+          Continue to Character
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 3: Character Creation (with Power-User Escape Hatch)
+// ============================================================================
+function CharacterStep({ project, setProject, advancedSettings, setAdvancedSettings, onNext, onBack }) {
+  const [cameraView, setCameraView] = useState(project.character?.cameraView || 'selfie');
+  const [productPosition, setProductPosition] = useState(project.character?.productPosition || 'holding');
+  const [setting, setSetting] = useState(project.character?.setting || 'bedroom');
+  const [generating, setGenerating] = useState(false);
+  const [characterPrompt, setCharacterPrompt] = useState(project.character?.prompt || '');
+  const [characterImage, setCharacterImage] = useState(project.character?.image || null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [qcInfo, setQcInfo] = useState(null);
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('character');
+  const [customPrompt, setCustomPrompt] = useState(advancedSettings?.customPrompt || '');
+  const [useCustomPrompt, setUseCustomPrompt] = useState(false);
+
+  // Auto-save character progress
+  useEffect(() => {
+    if (characterImage || characterPrompt) {
+      const timeoutId = setTimeout(() => {
+        setProject(prev => ({
+          ...prev,
+          character: {
+            cameraView, productPosition, setting,
+            prompt: useCustomPrompt ? customPrompt : characterPrompt,
+            image: characterImage
+          }
+        }));
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [characterImage, characterPrompt, cameraView, productPosition, setting, customPrompt, useCustomPrompt]);
+
+  const generateCharacter = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/generate-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product: project.product,
+          targetAudience: project.targetAudience,
+          cameraView,
+          productPosition,
+          setting
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCharacterPrompt(data.prompt);
+        setCustomPrompt(data.prompt); // Also populate custom prompt field
+      }
+    } catch (error) {
+      console.error('Error generating character:', error);
+    }
+    setGenerating(false);
+  };
+
+  const generateImage = async () => {
+    setGeneratingImage(true);
+    setQcInfo(null);
+    try {
+      const promptToUse = useCustomPrompt && customPrompt ? customPrompt : characterPrompt;
+      
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: promptToUse,
+          referenceImages: project.product?.image ? [{
+            base64: project.product.image.split('base64,')[1],
+            mimeType: 'image/png'
+          }] : [],
+          type: 'character',
+          context: { 
+            cameraView, 
+            productPosition, 
+            setting,
+            model: advancedSettings?.model || 'gemini-3-pro',
+            aspectRatio: advancedSettings?.aspectRatio || '9:16'
+          },
+          enableQC: true
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCharacterImage(data.image);
+        setQcInfo({
+          score: data.qcScore,
+          passed: data.qcPassed,
+          attempts: data.attempts,
+          issues: data.issues
+        });
+      }
+    } catch (error) {
+      console.error('Error generating image:', error);
+    }
+    setGeneratingImage(false);
+  };
+
+  const handleUploadOverride = (file) => {
+    setCharacterImage(file.dataUrl);
+    setQcInfo({ score: 100, passed: true, attempts: 0, issues: [], uploaded: true });
+  };
+
+  const handleNext = () => {
+    setProject(prev => ({
+      ...prev,
+      character: {
+        cameraView, productPosition, setting,
+        prompt: useCustomPrompt ? customPrompt : characterPrompt,
+        image: characterImage
+      }
+    }));
+    onNext();
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Create Your UGC Creator</h2>
+        <p className="text-gray-500">Design a character that matches your target audience</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-8">
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Camera View</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button className={`p-4 rounded-xl border-2 text-center transition-all ${
+                cameraView === 'selfie' ? 'border-black bg-gray-50' : 'border-gray-200'}`}
+                onClick={() => setCameraView('selfie')}>
+                <div className="text-2xl mb-1">🤳</div>
+                <div className="font-medium">Selfie</div>
+              </button>
+              <button className={`p-4 rounded-xl border-2 text-center transition-all ${
+                cameraView === 'third-person' ? 'border-black bg-gray-50' : 'border-gray-200'}`}
+                onClick={() => setCameraView('third-person')}>
+                <div className="text-2xl mb-1">📱</div>
+                <div className="font-medium">Third Person</div>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Product Position</label>
+            <div className="grid grid-cols-2 gap-3">
+              {['holding', 'wearing'].map(pos => (
+                <button key={pos} className={`p-4 rounded-xl border-2 text-center transition-all ${
+                  productPosition === pos ? 'border-black bg-gray-50' : 'border-gray-200'}`}
+                  onClick={() => setProductPosition(pos)}>
+                  <div className="font-medium capitalize">{pos}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Setting</label>
+            <select className="input" value={setting} onChange={(e) => setSetting(e.target.value)}>
+              <option value="bedroom">Bedroom</option>
+              <option value="bathroom">Bathroom Mirror</option>
+              <option value="living-room">Living Room</option>
+              <option value="kitchen">Kitchen</option>
+              <option value="office">Home Office</option>
+              <option value="outdoor">Outdoor</option>
+            </select>
+          </div>
+
+          <button className="btn-secondary w-full" onClick={generateCharacter} disabled={generating}>
+            {generating ? 'Generating...' : '1. Generate Prompt'}
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="card">
+            <h3 className="font-semibold text-black mb-4">Character Prompt</h3>
+            {characterPrompt ? (
+              <textarea className="textarea text-sm" rows={6} value={characterPrompt}
+                onChange={(e) => setCharacterPrompt(e.target.value)} />
+            ) : (
+              <div className="h-32 flex items-center justify-center text-gray-400">
+                Generate a prompt first
+              </div>
+            )}
+          </div>
+
+          {characterPrompt && (
+            <button className="btn-primary w-full" onClick={generateImage} disabled={generatingImage}>
+              {generatingImage ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating with QC...
+                </span>
+              ) : '2. Generate Image'}
+            </button>
+          )}
+
+          {characterImage && (
+            <div className="card">
+              <img src={characterImage} alt="Character" className="w-full rounded-lg mb-3" />
+              {qcInfo && (
+                <div className={`text-sm p-3 rounded-lg ${
+                  qcInfo.uploaded ? 'bg-blue-50 text-blue-700' :
+                  qcInfo.passed ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+                }`}>
+                  {qcInfo.uploaded ? (
+                    <div className="font-medium">📁 Uploaded image (no QC)</div>
+                  ) : (
+                    <>
+                      <div className="font-medium">QC Score: {qcInfo.score}/100 {qcInfo.passed ? '✓' : '⚠️'}</div>
+                      {qcInfo.attempts > 1 && <div className="text-xs mt-1">Auto-corrected after {qcInfo.attempts} attempts</div>}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Advanced Panel - Power User Escape Hatch */}
+      <AdvancedPanel 
+        title="Advanced Generation Options" 
+        isOpen={advancedMode} 
+        onToggle={toggleAdvanced}
+      >
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <ModelSelector 
+              value={advancedSettings?.model || 'gemini-3-pro'}
+              onChange={(v) => setAdvancedSettings({ ...advancedSettings, model: v })}
+              type="image"
+            />
+            
+            <AspectRatioSelector 
+              value={advancedSettings?.aspectRatio || '9:16'}
+              onChange={(v) => setAdvancedSettings({ ...advancedSettings, aspectRatio: v })}
+            />
+            
+            <SliderParam 
+              label="CFG Scale"
+              value={advancedSettings?.cfgScale || 0.5}
+              onChange={(v) => setAdvancedSettings({ ...advancedSettings, cfgScale: v })}
+              min={0}
+              max={1}
+              step={0.1}
+              description="Higher = more prompt adherence, lower = more creative freedom"
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <input 
+                type="checkbox"
+                id="useCustomPrompt"
+                checked={useCustomPrompt}
+                onChange={(e) => setUseCustomPrompt(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <label htmlFor="useCustomPrompt" className="text-sm font-medium text-gray-700">
+                Use custom prompt instead
+              </label>
+            </div>
+            
+            {useCustomPrompt && (
+              <PromptEditor 
+                value={customPrompt}
+                onChange={setCustomPrompt}
+                label="Custom Character Prompt"
+                rows={8}
+                placeholder="Write your own character generation prompt..."
+              />
+            )}
+            
+            <UploadOverride 
+              onUpload={handleUploadOverride}
+              label="Or upload your own character image"
+              accept="image/*"
+            />
+          </div>
+        </div>
+        
+        <QuickPresets 
+          onSelect={(settings) => {
+            setAdvancedSettings({ ...advancedSettings, ...settings });
+          }}
+          presets={[
+            { id: 'realistic', name: 'Ultra Realistic', icon: '📸', settings: { cfgScale: 0.7 } },
+            { id: 'creative', name: 'More Creative', icon: '🎨', settings: { cfgScale: 0.3 } },
+            { id: 'square', name: 'Square (1:1)', icon: '⬜', settings: { aspectRatio: '1:1' } },
+          ]}
+        />
+      </AdvancedPanel>
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className={`btn-primary ${!characterImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!characterImage} onClick={handleNext}>
+          Continue to Script
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 4: Script
+// ============================================================================
+function ScriptStep({ project, setProject, onNext, onBack }) {
+  const [script, setScript] = useState(project.script || '');
+  const [segments, setSegments] = useState(project.segments || []);
+  const [chunking, setChunking] = useState(false);
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('script');
+  const [manualEdit, setManualEdit] = useState(false);
+
+  const research = project.research;
+  const hasResearch = research?.angles?.hookAngles?.length > 0;
+  const [showSuggestions, setShowSuggestions] = useState(hasResearch);
+
+  // Auto-save script progress
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setProject(prev => ({ ...prev, script, segments }));
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [script, segments]);
+
+  const chunkScript = async () => {
+    setChunking(true);
+    try {
+      const res = await fetch('/api/chunk-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script })
+      });
+      const data = await res.json();
+      if (data.success) setSegments(data.segments);
+    } catch (error) {
+      console.error('Error chunking script:', error);
+    }
+    setChunking(false);
+  };
+
+  const useHook = (hookLine) => {
+    setScript(prev => hookLine + (prev ? '\n\n' + prev : ''));
+  };
+
+  const usePainPointScript = (painScript) => {
+    const fullScript = painScript.openingLine + (painScript.followUp ? ' ' + painScript.followUp : '');
+    setScript(prev => fullScript + (prev ? '\n\n' + prev : ''));
+  };
+
+  const moveSegment = (index, direction) => {
+    const newSegments = [...segments];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= newSegments.length) return;
+    [newSegments[index], newSegments[newIndex]] = [newSegments[newIndex], newSegments[index]];
+    // Re-number segments
+    newSegments.forEach((seg, i) => { seg.segment = i + 1; });
+    setSegments(newSegments);
+  };
+
+  const updateSegmentText = (index, newText) => {
+    const newSegments = [...segments];
+    newSegments[index] = { ...newSegments[index], text: newText };
+    setSegments(newSegments);
+  };
+
+  const deleteSegment = (index) => {
+    const newSegments = segments.filter((_, i) => i !== index);
+    newSegments.forEach((seg, i) => { seg.segment = i + 1; });
+    setSegments(newSegments);
+  };
+
+  const addSegment = () => {
+    setSegments([...segments, { 
+      segment: segments.length + 1, 
+      text: '', 
+      type: 'body' 
+    }]);
+  };
+
+  const handleNext = () => {
+    setProject(prev => ({ ...prev, script, segments }));
+    onNext();
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Write Your Script</h2>
+        <p className="text-gray-500">We'll split it into 5-8 second segments automatically</p>
+        {!hasResearch && (
+          <p className="text-sm text-blue-600 mt-2">
+            💡 Tip: Use the ✨ AI Generate button to create a script based on your product
+          </p>
+        )}
+      </div>
+
+      <div className={`grid gap-6 ${hasResearch && showSuggestions ? 'grid-cols-3' : 'max-w-3xl mx-auto'}`}>
+        {/* Main Script Area */}
+        <div className={hasResearch && showSuggestions ? 'col-span-2' : ''}>
+          <div className="card mb-6">
+            <div className="flex justify-between items-center mb-2">
+              {hasResearch && (
+                <button 
+                  className="text-xs text-gray-500 hover:text-black ml-auto"
+                  onClick={() => setShowSuggestions(!showSuggestions)}
+                >
+                  {showSuggestions ? 'Hide' : 'Show'} suggestions
+                </button>
+              )}
+            </div>
+            <AIField
+              label="Full Script"
+              value={script}
+              onChange={setScript}
+              placeholder="Write your UGC ad script here. Include the hook, key benefits, and call to action..."
+              rows={8}
+              promptType="script"
+              context={{
+                productName: project.product?.name,
+                productInfo: project.product?.description,
+                targetAudience: project.targetAudience,
+                researchHighlights: research?.angles?.hookAngles?.slice(0, 3).map(h => h.hookLine).join('; ')
+              }}
+            />
+            <div className="flex justify-between items-center mt-4">
+              <span className="text-sm text-gray-500">
+                {script.split(/\s+/).filter(Boolean).length} words
+              </span>
+              <button className="btn-primary" onClick={chunkScript} disabled={!script || chunking}>
+                {chunking ? 'Processing...' : 'Split into Segments'}
+              </button>
+            </div>
+          </div>
+
+          {segments.length > 0 && (
+            <div className="card">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-black">Script Segments ({segments.length})</h3>
+                {manualEdit && (
+                  <button 
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                    onClick={addSegment}
+                  >
+                    + Add Segment
+                  </button>
+                )}
+              </div>
+              <div className="space-y-3">
+                {segments.map((seg, idx) => (
+                  <div key={idx} className="flex gap-4 p-4 bg-gray-50 rounded-lg group">
+                    {manualEdit && (
+                      <div className="flex flex-col gap-1">
+                        <button 
+                          onClick={() => moveSegment(idx, -1)}
+                          disabled={idx === 0}
+                          className="text-gray-400 hover:text-black disabled:opacity-30"
+                        >↑</button>
+                        <button 
+                          onClick={() => moveSegment(idx, 1)}
+                          disabled={idx === segments.length - 1}
+                          className="text-gray-400 hover:text-black disabled:opacity-30"
+                        >↓</button>
+                      </div>
+                    )}
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium h-fit ${
+                      seg.type === 'hook' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
+                      {seg.type === 'hook' ? '🪝 Hook' : `Part ${seg.segment}`}
+                    </div>
+                    <div className="flex-1">
+                      {manualEdit ? (
+                        <textarea 
+                          className="w-full p-2 border border-gray-200 rounded text-sm"
+                          value={seg.text}
+                          onChange={(e) => updateSegmentText(idx, e.target.value)}
+                          rows={2}
+                        />
+                      ) : (
+                        <p className="text-black">{seg.text}</p>
+                      )}
+                      <p className="text-xs text-gray-400 mt-1">~{Math.round(seg.text.split(/\s+/).length / 2.5)}s</p>
+                    </div>
+                    {manualEdit && (
+                      <button 
+                        onClick={() => deleteSegment(idx)}
+                        className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
+                      >🗑️</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Research Suggestions Sidebar */}
+        {hasResearch && showSuggestions && (
+          <div className="space-y-4">
+            <div className="card">
+              <h4 className="font-semibold text-black mb-3 text-sm">🎣 Hook Ideas</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {(research.angles?.hookAngles || []).slice(0, 5).map((hook, i) => (
+                  <button key={i}
+                    className="w-full text-left p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all"
+                    onClick={() => useHook(hook.hookLine)}
+                  >
+                    <p className="text-xs text-black font-medium">"{hook.hookLine}"</p>
+                    <p className="text-xs text-gray-400 mt-1">{hook.angle}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <h4 className="font-semibold text-black mb-3 text-sm">🔥 Pain Point Scripts</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {(research.angles?.painPointScripts || []).slice(0, 4).map((ps, i) => (
+                  <button key={i}
+                    className="w-full text-left p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all"
+                    onClick={() => usePainPointScript(ps)}
+                  >
+                    <p className="text-xs text-red-600 mb-1">{ps.painPoint}</p>
+                    <p className="text-xs text-black font-medium">"{ps.openingLine}"</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <h4 className="font-semibold text-black mb-3 text-sm">💬 Customer Language</h4>
+              <div className="space-y-1">
+                {(research.avatar?.languageProfile?.emotionalPhrases || []).slice(0, 5).map((phrase, i) => (
+                  <p key={i} className="text-xs text-gray-600 italic">"{phrase}"</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Advanced Panel */}
+      <AdvancedPanel 
+        title="Script Editing Options" 
+        isOpen={advancedMode} 
+        onToggle={toggleAdvanced}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <input 
+              type="checkbox"
+              id="manualEdit"
+              checked={manualEdit}
+              onChange={(e) => setManualEdit(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <label htmlFor="manualEdit" className="text-sm text-gray-700">
+              Enable manual segment editing (reorder, edit, delete, add)
+            </label>
+          </div>
+          
+          <div className="p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
+            <strong>Power user tip:</strong> Enable manual editing to fine-tune segment boundaries, 
+            reorder sections, or add custom segments that weren't in your original script.
+          </div>
+        </div>
+      </AdvancedPanel>
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className={`btn-primary ${segments.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={segments.length === 0} onClick={handleNext}>
+          Continue to A-Roll
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 5: A-Roll Generation (with Power-User Escape Hatch)
+// ============================================================================
+function ARollStep({ project, setProject, advancedSettings, setAdvancedSettings, onNext, onBack }) {
+  const [generating, setGenerating] = useState({});
+  const [clips, setClips] = useState(project.arollClips || []);
+  const [accent, setAccent] = useState('neutral American');
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('aroll');
+  const [customPrompts, setCustomPrompts] = useState({});
+
+  // Auto-save A-roll progress
+  useEffect(() => {
+    if (clips.length > 0) {
+      setProject(prev => ({ ...prev, arollClips: clips }));
+    }
+  }, [clips]);
+
+  const generateClip = async (segment, customPrompt = null) => {
+    setGenerating(prev => ({ ...prev, [segment.segment]: true }));
+    try {
+      const res = await fetch('/api/generate-aroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterImage: project.character?.image,
+          segment,
+          characterContext: {
+            cameraView: project.character?.cameraView,
+            productPosition: project.character?.productPosition,
+            accent
+          },
+          customPrompt,
+          model: advancedSettings?.model || 'veo-3.1',
+          duration: advancedSettings?.duration || '8s'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setClips(prev => {
+          const updated = prev.filter(c => c.segment !== segment.segment);
+          return [...updated, { segment: segment.segment, text: segment.text, videoUrl: data.videoUrl, prompt: data.prompt }];
+        });
+      } else {
+        alert(`Generation failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error generating A-roll:', error);
+    }
+    setGenerating(prev => ({ ...prev, [segment.segment]: false }));
+  };
+
+  const generateAll = async () => {
+    for (const segment of project.segments) {
+      if (!clips.find(c => c.segment === segment.segment)) {
+        await generateClip(segment, customPrompts[segment.segment]);
+      }
+    }
+  };
+
+  const handleNext = () => {
+    setProject(prev => ({ ...prev, arollClips: clips }));
+    onNext();
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Generate A-Roll Video</h2>
+        <p className="text-gray-500">Create talking head segments using Veo 3.1</p>
+      </div>
+
+      <div className="card mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Voice Accent</label>
+            <select className="input w-48" value={accent} onChange={(e) => setAccent(e.target.value)}>
+              <option value="neutral American">Neutral American</option>
+              <option value="British">British</option>
+              <option value="Australian">Australian</option>
+              <option value="Southern American">Southern American</option>
+            </select>
+          </div>
+          <button className="btn-primary" onClick={generateAll}>
+            Generate All ({project.segments.length - clips.length} remaining)
+          </button>
+        </div>
+      </div>
+
+      {/* Advanced Panel */}
+      <AdvancedPanel 
+        title="A-Roll Generation Options" 
+        isOpen={advancedMode} 
+        onToggle={toggleAdvanced}
+      >
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <ModelSelector 
+              value={advancedSettings?.model || 'veo-3.1'}
+              onChange={(v) => setAdvancedSettings({ ...advancedSettings, model: v })}
+              type="video"
+            />
+            
+            <DurationSelector 
+              value={advancedSettings?.duration || '8'}
+              onChange={(v) => setAdvancedSettings({ ...advancedSettings, duration: v })}
+              options={['5', '8', '10']}
+            />
+          </div>
+          
+          <div className="p-3 bg-yellow-50 rounded-lg text-xs text-yellow-800">
+            <strong>Per-segment custom prompts:</strong> Click the ⚙️ icon on any segment card below 
+            to write a custom Veo prompt for that specific clip.
+          </div>
+        </div>
+      </AdvancedPanel>
+
+      <div className="grid grid-cols-2 gap-4 mt-6">
+        {project.segments.map((segment) => (
+          <ARollCard
+            key={segment.segment}
+            segment={segment}
+            clip={clips.find(c => c.segment === segment.segment)}
+            isGenerating={generating[segment.segment]}
+            advancedMode={advancedMode}
+            customPrompt={customPrompts[segment.segment]}
+            onCustomPromptChange={(value) => setCustomPrompts(prev => ({
+              ...prev,
+              [segment.segment]: value
+            }))}
+            onGenerate={() => generateClip(segment, customPrompts[segment.segment])}
+          />
+        ))}
+      </div>
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className="btn-primary" onClick={handleNext}>
+          Continue to B-Roll
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 6: B-Roll Generation (with Power-User Escape Hatch)
+// ============================================================================
+function BRollStep({ project, setProject, advancedSettings, setAdvancedSettings, onNext, onBack }) {
+  const [generating, setGenerating] = useState({});
+  const [images, setImages] = useState(project.brollImages || []);
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('broll');
+  const [customPrompts, setCustomPrompts] = useState({});
+
+  // Auto-save B-roll progress
+  useEffect(() => {
+    if (images.length > 0) {
+      setProject(prev => ({ ...prev, brollImages: images }));
+    }
+  }, [images]);
+
+  const generateBroll = async (segment, customPrompt = null) => {
+    setGenerating(prev => ({ ...prev, [segment.segment]: true }));
+    try {
+      const res = await fetch('/api/generate-broll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          segment,
+          productInfo: project.product,
+          characterReference: project.character?.image,
+          productImage: project.product?.image,
+          customPrompt,
+          enableQC: true,
+          model: advancedSettings?.model || 'gemini-3-pro',
+          aspectRatio: advancedSettings?.aspectRatio || '9:16'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setImages(prev => {
+          const updated = prev.filter(i => i.segment !== segment.segment);
+          return [...updated, {
+            segment: segment.segment,
+            text: segment.text,
+            image: data.image,
+            prompt: data.prompt,
+            qcScore: data.qcScore
+          }];
+        });
+      } else {
+        alert(`Generation failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error generating B-roll:', error);
+    }
+    setGenerating(prev => ({ ...prev, [segment.segment]: false }));
+  };
+
+  const generateAll = async () => {
+    for (const segment of project.segments) {
+      if (!images.find(i => i.segment === segment.segment)) {
+        await generateBroll(segment, customPrompts[segment.segment]);
+      }
+    }
+  };
+
+  const handleUploadOverride = (segmentNum, file) => {
+    setImages(prev => {
+      const updated = prev.filter(i => i.segment !== segmentNum);
+      return [...updated, {
+        segment: segmentNum,
+        image: file.dataUrl,
+        qcScore: 100,
+        uploaded: true
+      }];
+    });
+  };
+
+  const handleNext = () => {
+    setProject(prev => ({ ...prev, brollImages: images }));
+    onNext();
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Create B-Roll Scenes</h2>
+        <p className="text-gray-500">Generate supporting visuals for each segment</p>
+      </div>
+
+      <div className="card mb-6">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            B-roll images visually prove the claims in your script. These will be animated next.
+          </p>
+          <button className="btn-primary" onClick={generateAll}>
+            Generate All ({project.segments.length - images.length} remaining)
+          </button>
+        </div>
+      </div>
+
+      {/* Advanced Panel */}
+      <AdvancedPanel 
+        title="B-Roll Generation Options" 
+        isOpen={advancedMode} 
+        onToggle={toggleAdvanced}
+      >
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <ModelSelector 
+              value={advancedSettings?.model || 'gemini-3-pro'}
+              onChange={(v) => setAdvancedSettings({ ...advancedSettings, model: v })}
+              type="image"
+            />
+            
+            <AspectRatioSelector 
+              value={advancedSettings?.aspectRatio || '9:16'}
+              onChange={(v) => setAdvancedSettings({ ...advancedSettings, aspectRatio: v })}
+            />
+          </div>
+          
+          <div className="p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
+            <strong>Power user tips:</strong>
+            <ul className="mt-1 space-y-1 list-disc list-inside">
+              <li>Click ⚙️ on any card to write a custom prompt</li>
+              <li>Upload your own images instead of generating</li>
+              <li>Mix generated and uploaded images freely</li>
+            </ul>
+          </div>
+        </div>
+      </AdvancedPanel>
+
+      <div className="grid grid-cols-3 gap-4 mt-6">
+        {project.segments.map((segment) => (
+          <BRollCard
+            key={segment.segment}
+            segment={segment}
+            broll={images.find(i => i.segment === segment.segment)}
+            isGenerating={generating[segment.segment]}
+            advancedMode={advancedMode}
+            customPrompt={customPrompts[segment.segment]}
+            onCustomPromptChange={(value) => setCustomPrompts(prev => ({
+              ...prev,
+              [segment.segment]: value
+            }))}
+            onGenerate={() => generateBroll(segment, customPrompts[segment.segment])}
+            onUpload={(file) => handleUploadOverride(segment.segment, file)}
+          />
+        ))}
+      </div>
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className="btn-primary" onClick={handleNext}>
+          Continue to Animation
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 7: Animation (with Power-User Escape Hatch)
+// ============================================================================
+function AnimationStep({ project, setProject, advancedSettings, setAdvancedSettings, onNext, onBack }) {
+  const [animating, setAnimating] = useState({});
+  const [polling, setPolling] = useState({});
+  const [animations, setAnimations] = useState(project.brollAnimations || []);
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('animation');
+  const [customPrompts, setCustomPrompts] = useState({});
+
+  // Auto-save animation progress
+  useEffect(() => {
+    if (animations.length > 0) {
+      setProject(prev => ({ ...prev, brollAnimations: animations }));
+    }
+  }, [animations]);
+
+  const pollStatus = async (taskId, segmentNum) => {
+    setPolling(prev => ({ ...prev, [segmentNum]: true }));
+    
+    const maxAttempts = 60;
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 5000));
+      attempts++;
+      
+      try {
+        const res = await fetch(`/api/animate-broll?taskId=${taskId}`);
+        const data = await res.json();
+        
+        if (data.status === 'succeed' && data.videos?.length > 0) {
+          setAnimations(prev => {
+            const updated = prev.filter(a => a.segment !== segmentNum);
+            return [...updated, {
+              segment: segmentNum,
+              videoUrl: data.videos[0].url,
+              taskId
+            }];
+          });
+          break;
+        } else if (data.status === 'failed') {
+          alert(`Animation failed for segment ${segmentNum}`);
+          break;
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }
+    
+    setPolling(prev => ({ ...prev, [segmentNum]: false }));
+    setAnimating(prev => ({ ...prev, [segmentNum]: false }));
+  };
+
+  const animateBroll = async (broll, segment) => {
+    setAnimating(prev => ({ ...prev, [segment.segment]: true }));
+    
+    try {
+      const res = await fetch('/api/animate-broll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brollImage: broll.image,
+          segment,
+          brollPrompt: customPrompts[segment.segment] || broll.prompt,
+          mode: advancedSettings?.mode || 'std',
+          duration: advancedSettings?.duration || '5',
+          cfgScale: advancedSettings?.cfgScale || 0.5
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.taskId) {
+        pollStatus(data.taskId, segment.segment);
+      } else {
+        alert(`Failed to start animation: ${data.error}`);
+        setAnimating(prev => ({ ...prev, [segment.segment]: false }));
+      }
+    } catch (error) {
+      console.error('Error animating:', error);
+      setAnimating(prev => ({ ...prev, [segment.segment]: false }));
+    }
+  };
+
+  const handleNext = () => {
+    setProject(prev => ({ ...prev, brollAnimations: animations }));
+    onNext();
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Animate B-Roll</h2>
+        <p className="text-gray-500">Bring your B-roll to life with Kling AI</p>
+      </div>
+
+      <div className="card mb-6 bg-blue-50 border-blue-200">
+        <p className="text-sm text-blue-700">
+          ⏱️ Animation takes 2-5 minutes per clip. You can animate multiple at once.
+        </p>
+      </div>
+
+      {/* Advanced Panel */}
+      <AdvancedPanel 
+        title="Animation Options" 
+        isOpen={advancedMode} 
+        onToggle={toggleAdvanced}
+      >
+        <div className="grid grid-cols-3 gap-6">
+          <ModeToggle 
+            value={advancedSettings?.mode || 'std'}
+            onChange={(v) => setAdvancedSettings({ ...advancedSettings, mode: v })}
+          />
+          
+          <DurationSelector 
+            value={advancedSettings?.duration || '5'}
+            onChange={(v) => setAdvancedSettings({ ...advancedSettings, duration: v })}
+            options={['5', '10']}
+          />
+          
+          <SliderParam 
+            label="CFG Scale"
+            value={advancedSettings?.cfgScale || 0.5}
+            onChange={(v) => setAdvancedSettings({ ...advancedSettings, cfgScale: v })}
+            min={0}
+            max={1}
+            step={0.1}
+            description="Controls motion intensity"
+          />
+        </div>
+        
+        <NegativePrompt 
+          value={advancedSettings?.negativePrompt || ''}
+          onChange={(v) => setAdvancedSettings({ ...advancedSettings, negativePrompt: v })}
+        />
+      </AdvancedPanel>
+
+      <div className="grid grid-cols-3 gap-4 mt-6">
+        {project.segments.map((segment) => {
+          const broll = project.brollImages?.find(i => i.segment === segment.segment);
+          return (
+            <AnimationCard
+              key={segment.segment}
+              segment={segment}
+              broll={broll}
+              animation={animations.find(a => a.segment === segment.segment)}
+              isAnimating={animating[segment.segment]}
+              isPolling={polling[segment.segment]}
+              advancedMode={advancedMode}
+              customPrompt={customPrompts[segment.segment]}
+              onCustomPromptChange={(value) => setCustomPrompts(prev => ({
+                ...prev,
+                [segment.segment]: value
+              }))}
+              onAnimate={() => broll && animateBroll(broll, segment)}
+            />
+          );
+        })}
+      </div>
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className="btn-primary" onClick={handleNext}>
+          Continue to Voice
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 8: Voice Generation (with Power-User Escape Hatch)
+// ============================================================================
+function VoiceStep({ project, setProject, advancedSettings, setAdvancedSettings, onNext, onBack }) {
+  const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState(project.voiceId || null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [voiceovers, setVoiceovers] = useState(project.voiceovers || []);
+  const [previewPlaying, setPreviewPlaying] = useState(null);
+  const [advancedMode, toggleAdvanced] = useAdvancedMode('voice');
+
+  useEffect(() => {
+    fetchVoices();
+  }, []);
+
+  // Auto-save voice progress
+  useEffect(() => {
+    if (voiceovers.length > 0 || selectedVoice) {
+      setProject(prev => ({ ...prev, voiceId: selectedVoice, voiceovers }));
+    }
+  }, [voiceovers, selectedVoice]);
+
+  const fetchVoices = async () => {
+    try {
+      const res = await fetch('/api/voices');
+      const data = await res.json();
+      if (data.success) {
+        setVoices(data.voices);
+        if (!selectedVoice && data.voices.length > 0) {
+          setSelectedVoice(data.voices[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching voices:', error);
+    }
+    setLoading(false);
+  };
+
+  const generateVoiceovers = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/generate-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voiceId: selectedVoice,
+          segments: project.segments.map(s => ({ text: s.text, segment: s.segment })),
+          settings: {
+            speed: advancedSettings?.speed || 1.0,
+            stability: advancedSettings?.stability || 0.5,
+            similarityBoost: advancedSettings?.similarityBoost || 0.75
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVoiceovers(data.results.filter(r => r.success).map(r => ({
+          segment: r.segment,
+          text: r.text,
+          audioBase64: r.audioBase64,
+          duration: r.estimatedDuration
+        })));
+      }
+    } catch (error) {
+      console.error('Error generating voiceovers:', error);
+    }
+    setGenerating(false);
+  };
+
+  const playPreview = (voiceId, previewUrl) => {
+    if (previewPlaying === voiceId) {
+      setPreviewPlaying(null);
+      return;
+    }
+    setPreviewPlaying(voiceId);
+    const audio = new Audio(previewUrl);
+    audio.onended = () => setPreviewPlaying(null);
+    audio.play();
+  };
+
+  const handleNext = () => {
+    setProject(prev => ({ ...prev, voiceId: selectedVoice, voiceovers }));
+    onNext();
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Generate Voiceover</h2>
+        <p className="text-gray-500">Add voice to your ad with ElevenLabs</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2">
+          <div className="card mb-6">
+            <h3 className="font-semibold text-black mb-4">Select Voice</h3>
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Loading voices...</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                {voices.map(voice => (
+                  <button key={voice.id}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                      selectedVoice === voice.id ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedVoice(voice.id)}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-sm">{voice.name}</div>
+                        <div className="text-xs text-gray-500">{voice.accent} • {voice.gender}</div>
+                      </div>
+                      {voice.previewUrl && (
+                        <button className="text-gray-400 hover:text-black"
+                          onClick={(e) => { e.stopPropagation(); playPreview(voice.id, voice.previewUrl); }}>
+                          {previewPlaying === voice.id ? '⏹' : '▶️'}
+                        </button>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Advanced Panel */}
+          <AdvancedPanel 
+            title="Voice Settings" 
+            isOpen={advancedMode} 
+            onToggle={toggleAdvanced}
+          >
+            <div className="grid grid-cols-3 gap-6">
+              <SliderParam 
+                label="Speed"
+                value={advancedSettings?.speed || 1.0}
+                onChange={(v) => setAdvancedSettings({ ...advancedSettings, speed: v })}
+                min={0.5}
+                max={2.0}
+                step={0.1}
+                description="Speaking pace"
+              />
+              
+              <SliderParam 
+                label="Stability"
+                value={advancedSettings?.stability || 0.5}
+                onChange={(v) => setAdvancedSettings({ ...advancedSettings, stability: v })}
+                min={0}
+                max={1}
+                step={0.1}
+                description="Voice consistency"
+              />
+              
+              <SliderParam 
+                label="Similarity Boost"
+                value={advancedSettings?.similarityBoost || 0.75}
+                onChange={(v) => setAdvancedSettings({ ...advancedSettings, similarityBoost: v })}
+                min={0}
+                max={1}
+                step={0.1}
+                description="Voice matching"
+              />
+            </div>
+            
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-800">
+              <strong>Coming soon:</strong> Upload your own audio files instead of generating, 
+              or use custom voice cloning.
+            </div>
+          </AdvancedPanel>
+
+          <button className="btn-primary w-full mt-4" onClick={generateVoiceovers}
+            disabled={!selectedVoice || generating}>
+            {generating ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating {project.segments.length} clips...
+              </span>
+            ) : `Generate All Voiceovers (${project.segments.length} segments)`}
+          </button>
+        </div>
+
+        <div>
+          <div className="card">
+            <h3 className="font-semibold text-black mb-4">Generated Audio</h3>
+            {voiceovers.length > 0 ? (
+              <div className="space-y-3">
+                {voiceovers.map(vo => (
+                  <div key={vo.segment} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium">Segment {vo.segment}</span>
+                      <span className="text-xs text-gray-500">~{vo.duration}s</span>
+                    </div>
+                    <audio controls className="w-full h-8"
+                      src={`data:audio/mpeg;base64,${vo.audioBase64}`} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                No voiceovers yet
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className="btn-primary" onClick={handleNext}>
+          Continue to Export
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 9: Export & Assembly Guide
+// ============================================================================
+function ExportStep({ project, onBack, onReset }) {
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
+
+  const analyzeAssembly = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await fetch('/api/analyze-assembly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          script: project.script,
+          segments: project.segments,
+          arollClips: project.arollClips,
+          brollImages: project.brollImages,
+          brollAnimations: project.brollAnimations,
+          voiceovers: project.voiceovers,
+          productInfo: project.product
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAnalysis(data);
+      }
+    } catch (error) {
+      console.error('Analysis error:', error);
+    }
+    setAnalyzing(false);
+  };
+
+  const downloadAssets = () => {
+    const manifest = {
+      project: {
+        product: project.product?.name,
+        segments: project.segments.length
+      },
+      assets: {
+        characterImage: project.character?.image ? 'character.png' : null,
+        arollClips: project.arollClips?.map(c => c.videoUrl) || [],
+        brollImages: project.brollImages?.map(b => b.image) || [],
+        brollAnimations: project.brollAnimations?.map(a => a.videoUrl) || [],
+        voiceovers: project.voiceovers?.length || 0
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ugc-project-manifest.json';
+    a.click();
+  };
+
+  const stats = {
+    segments: project.segments?.length || 0,
+    aroll: project.arollClips?.length || 0,
+    brollImages: project.brollImages?.length || 0,
+    brollAnimations: project.brollAnimations?.length || 0,
+    voiceovers: project.voiceovers?.length || 0
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-black mb-2">Export & Assembly Guide</h2>
+        <p className="text-gray-500">AI-powered editing instructions for CapCut</p>
+      </div>
+
+      {/* Asset Summary */}
+      <div className="grid grid-cols-5 gap-4 mb-8">
+        {[
+          { label: 'Segments', value: stats.segments, icon: '📝' },
+          { label: 'A-Roll', value: stats.aroll, icon: '🎬' },
+          { label: 'B-Roll Images', value: stats.brollImages, icon: '🖼️' },
+          { label: 'Animations', value: stats.brollAnimations, icon: '✨' },
+          { label: 'Voiceovers', value: stats.voiceovers, icon: '🎙️' }
+        ].map(stat => (
+          <div key={stat.label} className="card text-center">
+            <div className="text-2xl mb-1">{stat.icon}</div>
+            <div className="text-2xl font-bold text-black">{stat.value}</div>
+            <div className="text-xs text-gray-500">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {!analysis ? (
+        <div className="card text-center mb-8">
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">🧠</span>
+          </div>
+          <h3 className="text-lg font-semibold text-black mb-2">AI Assembly Analyzer</h3>
+          <p className="text-gray-500 mb-6">
+            Get a detailed editing guide showing how to combine your assets in CapCut
+          </p>
+          <button className="btn-primary" onClick={analyzeAssembly} disabled={analyzing}>
+            {analyzing ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Analyzing...
+              </span>
+            ) : 'Generate Editing Guide'}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6 mb-8">
+          {analysis.timeline && (
+            <div className="card">
+              <h3 className="font-semibold text-black mb-4 flex items-center gap-2">
+                📹 Visual Timeline
+              </h3>
+              <pre className="bg-gray-50 p-4 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap">
+                {analysis.timeline}
+              </pre>
+            </div>
+          )}
+
+          {analysis.analysis && (
+            <div className="card">
+              <h3 className="font-semibold text-black mb-4 flex items-center gap-2">
+                📋 Detailed Editing Guide
+              </h3>
+              <pre className="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
+                {analysis.analysis}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="card">
+        <h3 className="font-semibold text-black mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <button className="btn-secondary flex items-center justify-center gap-2" onClick={downloadAssets}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download Manifest
+          </button>
+          <button className="btn-secondary flex items-center justify-center gap-2"
+            onClick={() => navigator.clipboard.writeText(analysis?.analysis || '')}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Copy Guide
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-between">
+        <button className="btn-secondary" onClick={onBack}>Back</button>
+        <button className="btn-primary" onClick={onReset}>
+          Start New Project
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FFFFFF;
+  --foreground: #000000;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8F8F8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CCCCCC;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #999999;
+}
+
+/* Minimal button styles */
+.btn-primary {
+  @apply bg-black text-white px-6 py-3 rounded-lg font-medium transition-all hover:bg-gray-800 active:scale-[0.98];
+}
+
+.btn-secondary {
+  @apply bg-white text-black px-6 py-3 rounded-lg font-medium border border-gray-200 transition-all hover:bg-gray-50 active:scale-[0.98];
+}
+
+.btn-ghost {
+  @apply text-gray-600 px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 active:scale-[0.98];
+}
+
+/* Input styles */
+.input {
+  @apply w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-black placeholder-gray-400 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all;
+}
+
+.textarea {
+  @apply w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-black placeholder-gray-400 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all resize-none;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white border border-gray-200 rounded-2xl p-6;
+}
+
+.card-hover {
+  @apply card transition-all hover:border-gray-300 hover:shadow-sm cursor-pointer;
+}
+
+/* Step indicator */
+.step-active {
+  @apply w-10 h-10 rounded-full bg-black text-white flex items-center justify-center font-semibold;
+}
+
+.step-inactive {
+  @apply w-10 h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-semibold;
+}
+
+.step-complete {
+  @apply w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold;
+}
+
+/* Upload area */
+.upload-zone {
+  @apply border-2 border-dashed border-gray-300 rounded-xl p-8 text-center transition-all hover:border-gray-400 cursor-pointer;
+}
+
+.upload-zone-active {
+  @apply border-black bg-gray-50;
+}
+
+/* Progress bar */
+.progress-bar {
+  @apply h-1 bg-gray-200 rounded-full overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full bg-black transition-all duration-300;
+}
+
+/* Animation */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
