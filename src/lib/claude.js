@@ -16,13 +16,13 @@ const PROJECT_NAME = 'ugc-factory';
 // Model configuration
 const MODELS = {
   // Primary model - highest quality for initial generation
-  primary: 'claude-opus-4-5-20250514',
+  primary: 'claude-sonnet-4-20250514',
   
   // Iteration model - fast refinements
-  iterate: 'claude-sonnet-4-5-20250514',
+  iterate: 'claude-sonnet-4-20250514',
   
   // Fallback if needed
-  fallback: 'claude-sonnet-4-20250514'
+  fallback: 'claude-3-5-sonnet-20241022'
 };
 
 // Import centralized tracker
