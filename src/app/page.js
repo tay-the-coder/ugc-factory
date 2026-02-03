@@ -610,83 +610,46 @@ function ProductSetupStep({ project, setProject, onNext }) {
     setAnalyzing(false);
   };
 
-  // Deep Research with step-by-step progress
+  // Research Synthesis with Opus 4.5
   const runDeepResearch = async () => {
     setResearching(true);
-    setResearchProgress('Initializing...');
-    
-    // Initialize research steps
-    const steps = [
-      { id: 'reddit', name: 'Reddit Research', status: 'pending', model: null, description: 'Searching Reddit discussions...' },
-      { id: 'amazon', name: 'Amazon Reviews', status: 'pending', model: null, description: 'Analyzing Amazon reviews...' },
-      { id: 'avatar', name: 'Customer Avatar', status: 'pending', model: null, description: 'Building customer profile...' },
-      { id: 'angles', name: 'Creative Angles', status: 'pending', model: null, description: 'Generating hooks & angles...' }
-    ];
-    setResearchSteps(steps);
+    setResearchProgress('Analyzing product and documents with Opus 4.5...');
 
     try {
-      // Update step to running
-      const updateStep = (stepId, updates) => {
-        setResearchSteps(prev => prev.map(s => 
-          s.id === stepId ? { ...s, ...updates } : s
-        ));
-      };
-
-      // Simulate step progress (the API runs all steps, but we show progress)
-      updateStep('reddit', { status: 'running' });
-      setResearchProgress('Searching Reddit for real customer discussions...');
-      
       const res = await fetch('/api/market-research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productName: productName,
-          productCategory: productCategory,
           productAnalysis: analysisResult,
           targetAudience: targetAudience,
           supportingDocs: supportingDocs.map(d => ({ name: d.name, content: d.data })),
-          step: 'full'
         })
       });
 
       const data = await res.json();
 
       if (data.success && data.research) {
-        // Update steps with results and model info
-        const researchSteps = data.research.steps || [];
-        const sources = data.research.sources || [];
-        
-        // Map results to steps
-        researchSteps.forEach((step, idx) => {
-          const source = sources.find(s => s.step === step.step);
-          updateStep(step.step, {
-            status: step.status === 'complete' ? 'complete' : 'failed',
-            model: source?.source || 'perplexity/claude',
-            error: step.error
-          });
-        });
-        
-        // Log to dev console with cost
+        // Log to dev console
         setDevLogs(prev => [...prev, {
           type: 'research',
           timestamp: new Date().toISOString(),
-          models: sources.map(s => `${s.step}: ${s.source}`),
-          cost: data.research.costs?.total || 0,
+          model: data.research.model || 'claude-opus',
           success: true
         }]);
         
         setResearch(data.research);
         
         // Auto-fill target audience from research if available
-        if (data.research.avatar?.avatar) {
-          const av = data.research.avatar.avatar;
+        if (data.research.customerAvatar) {
+          const av = data.research.customerAvatar;
           const audienceFromResearch = [];
-          if (av.age) audienceFromResearch.push(av.age);
-          if (av.location) audienceFromResearch.push(av.location);
-          if (data.research.avatar.psychographics?.frustrations?.length) {
-            audienceFromResearch.push(`who struggle with: ${data.research.avatar.psychographics.frustrations.slice(0, 2).join(', ')}`);
+          if (av.demographics?.age) audienceFromResearch.push(av.demographics.age);
+          if (av.demographics?.location) audienceFromResearch.push(av.demographics.location);
+          if (av.psychographics?.frustrations?.length) {
+            audienceFromResearch.push(`who struggle with: ${av.psychographics.frustrations.slice(0, 2).join(', ')}`);
           }
-          if (audienceFromResearch.length) {
+          if (audienceFromResearch.length && !targetAudience) {
             setTargetAudience(audienceFromResearch.join(' • '));
           }
         }
@@ -956,169 +919,33 @@ function ProductSetupStep({ project, setProject, onNext }) {
         />
       </div>
 
-      {/* Deep Research Toggle */}
+      {/* Research Synthesis */}
       <div className="card mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-semibold text-black">🔬 Deep Research</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              AI analyzes Reddit, Amazon reviews, and forums to find pain points and creative angles
-            </p>
-          </div>
-          <button 
-            onClick={() => setDeepResearchEnabled(!deepResearchEnabled)}
-            className={`relative w-14 h-7 rounded-full transition-colors ${
-              deepResearchEnabled ? 'bg-black' : 'bg-gray-300'
-            }`}
-          >
-            <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ${
-              deepResearchEnabled ? 'translate-x-8' : 'translate-x-1'
-            }`} />
-          </button>
+        <div className="mb-4">
+          <h3 className="font-semibold text-black">🧠 Research Synthesis</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Opus 4.5 analyzes your product + uploaded docs to create customer insights, hooks, and angles
+          </p>
         </div>
 
-        {deepResearchEnabled ? (
+        {!research ? (
           <div className="space-y-4">
-            {!research ? (
-              <>
-                <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-                  Deep research will automatically discover your ideal target audience based on real customer discussions.
-                  <br />
-                  <span className="text-xs text-gray-500">⏱️ Takes 60-90 seconds • Uses Perplexity Deep Research + Claude Opus 4.5</span>
-                  <br />
-                  <span className="text-xs text-amber-600">💰 Estimated cost: $1.50-4.00 per research run</span>
-                </p>
-                
-                {/* Research Progress Steps */}
-                {researching && researchSteps.length > 0 && (
-                  <div className="bg-gray-900 rounded-xl p-4 text-white font-mono text-sm">
-                    <div className="flex items-center gap-2 mb-3 text-green-400">
-                      <span className="animate-pulse">●</span>
-                      <span>Deep Research Running...</span>
-                    </div>
-                    <div className="space-y-2">
-                      {researchSteps.map((step, idx) => (
-                        <div key={step.id} className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
-                            step.status === 'complete' ? 'bg-green-500' :
-                            step.status === 'running' ? 'bg-yellow-500 animate-pulse' :
-                            step.status === 'failed' ? 'bg-red-500' :
-                            'bg-gray-600'
-                          }`}>
-                            {step.status === 'complete' ? '✓' :
-                             step.status === 'running' ? '⟳' :
-                             step.status === 'failed' ? '✗' :
-                             idx + 1}
-                          </div>
-                          <div className="flex-1">
-                            <span className={step.status === 'running' ? 'text-yellow-400' : 'text-gray-300'}>
-                              {step.name}
-                            </span>
-                            {step.status === 'running' && (
-                              <span className="text-gray-500 ml-2 text-xs">{step.description}</span>
-                            )}
-                            {step.model && (
-                              <span className="text-cyan-400 ml-2 text-xs">→ {step.model}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-gray-700 text-xs text-gray-400">
-                      {researchProgress}
-                    </div>
-                  </div>
-                )}
-                
-                <button 
-                  onClick={runDeepResearch}
-                  disabled={researching || !productName}
-                  className={`w-full py-3 px-4 rounded-xl font-medium transition-all ${
-                    researching || !productName
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-green-500 to-teal-500 text-white hover:from-green-600 hover:to-teal-600'
-                  }`}
-                >
-                  {researching ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Running...
-                    </span>
-                  ) : (
-                    <span>🔍 Run Deep Research</span>
-                  )}
-                </button>
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-green-700 font-medium">
-                      <span>✓</span> Research Complete
-                    </div>
-                    {research.costs?.total > 0 && (
-                      <div className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-lg font-medium">
-                        💰 ${research.costs.total.toFixed(2)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 text-sm mt-3">
-                    <div>
-                      <span className="text-gray-500">Pain Points</span>
-                      <div className="font-medium text-black">{research.reddit?.painPoints?.length || 0}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Creative Angles</span>
-                      <div className="font-medium text-black">{research.angles?.hookAngles?.length || 0}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Insights</span>
-                      <div className="font-medium text-black">{research.amazon?.purchaseTriggers?.length || 0}</div>
-                    </div>
-                  </div>
-                  {/* Cost breakdown */}
-                  {research.costs && research.costs.total > 0 && (
-                    <div className="mt-3 pt-3 border-t border-green-200">
-                      <div className="text-xs text-gray-500 flex flex-wrap gap-3">
-                        {research.costs.reddit > 0 && <span>Reddit: ${research.costs.reddit.toFixed(2)}</span>}
-                        {research.costs.amazon > 0 && <span>Amazon: ${research.costs.amazon.toFixed(2)}</span>}
-                        {research.costs.avatar > 0 && <span>Avatar: ${research.costs.avatar.toFixed(2)}</span>}
-                        {research.costs.angles > 0 && <span>Angles: ${research.costs.angles.toFixed(2)}</span>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Show target audience from research */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Target Audience <span className="text-xs text-green-600">(from research)</span>
-                  </label>
-                  <textarea 
-                    className="textarea text-sm" 
-                    rows={2}
-                    value={targetAudience}
-                    onChange={(e) => setTargetAudience(e.target.value)}
-                  />
-                </div>
-                
-                <button 
-                  onClick={() => setResearch(null)}
-                  className="text-sm text-gray-500 hover:text-black"
-                >
-                  ↻ Re-run research
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
+            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+              {supportingDocs.length > 0 ? (
+                <>
+                  <strong>{supportingDocs.length} document{supportingDocs.length > 1 ? 's' : ''} ready</strong> - Click below to synthesize your research with Claude Opus 4.5
+                </>
+              ) : (
+                <>
+                  <strong>Tip:</strong> Upload your Perplexity research, competitor analysis, or customer feedback above for better results
+                </>
+              )}
+            </p>
+            
+            {/* Target Audience Input */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">Target Audience</label>
+                <label className="block text-sm font-medium text-gray-700">Target Audience (optional)</label>
                 <button 
                   onClick={quickGenerateAudience}
                   className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
@@ -1128,12 +955,96 @@ function ProductSetupStep({ project, setProject, onNext }) {
               </div>
               <textarea 
                 className="textarea text-sm" 
-                rows={3}
-                placeholder="e.g., Women 25-45 who struggle with back pain, work from home, value comfort..."
+                rows={2}
+                placeholder="e.g., Women 25-45 who struggle with back pain, work from home..."
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
               />
             </div>
+            
+            {researching && (
+              <div className="bg-gray-900 rounded-xl p-4 text-white font-mono text-sm">
+                <div className="flex items-center gap-2 text-green-400">
+                  <span className="animate-pulse">●</span>
+                  <span>Synthesizing with Opus 4.5...</span>
+                </div>
+                <div className="mt-2 text-xs text-gray-400">{researchProgress}</div>
+              </div>
+            )}
+            
+            <button 
+              onClick={runDeepResearch}
+              disabled={researching || !productName}
+              className={`w-full py-3 px-4 rounded-xl font-medium transition-all ${
+                researching || !productName
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600'
+              }`}
+            >
+              {researching ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Synthesizing...
+                </span>
+              ) : (
+                <span>🧠 Synthesize Research</span>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center gap-2 text-green-700 font-medium mb-2">
+                <span>✓</span> Research Complete
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-sm mt-3">
+                <div>
+                  <span className="text-gray-500">Pain Points</span>
+                  <div className="font-medium text-black">{research.painPoints?.length || 0}</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Hook Angles</span>
+                  <div className="font-medium text-black">{research.hookAngles?.length || 0}</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Language Patterns</span>
+                  <div className="font-medium text-black">{research.languagePatterns?.length || 0}</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Show avatar summary */}
+            {research.customerAvatar && (
+              <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                <div className="font-medium text-black mb-1">Customer Avatar</div>
+                <div className="text-gray-600">
+                  {research.customerAvatar.name || research.customerAvatar.demographics?.name}, {research.customerAvatar.age || research.customerAvatar.demographics?.age} - {research.customerAvatar.occupation || research.customerAvatar.demographics?.occupation}
+                </div>
+              </div>
+            )}
+            
+            {/* Target audience from research */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target Audience <span className="text-xs text-green-600">(from research)</span>
+              </label>
+              <textarea 
+                className="textarea text-sm" 
+                rows={2}
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+              />
+            </div>
+            
+            <button 
+              onClick={() => setResearch(null)}
+              className="text-sm text-gray-500 hover:text-black"
+            >
+              ↻ Re-run research
+            </button>
           </div>
         )}
       </div>
