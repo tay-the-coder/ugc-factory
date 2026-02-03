@@ -106,6 +106,37 @@ export default function Home() {
     );
   }
 
+  // Show welcome screen if no project exists
+  if (!project || !project.id) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="w-20 h-20 bg-black rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <span className="text-white font-bold text-3xl">U</span>
+          </div>
+          <h1 className="text-3xl font-bold text-black mb-3">UGC Factory</h1>
+          <p className="text-gray-600 mb-8">
+            Create scroll-stopping UGC ads with AI. Upload your product, add your research, and let AI generate hooks, scripts, and visuals.
+          </p>
+          <button 
+            onClick={() => {
+              const name = prompt('Project name:', 'My First Project');
+              if (name) {
+                createProject(name);
+              }
+            }}
+            className="px-8 py-4 bg-black text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors text-lg"
+          >
+            + Create Your First Project
+          </button>
+          <p className="text-xs text-gray-400 mt-6">
+            All data is stored locally in your browser
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}

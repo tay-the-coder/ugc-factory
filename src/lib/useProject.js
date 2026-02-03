@@ -231,8 +231,8 @@ export function useProject() {
       // Save immediately
       saveProjects(remaining);
       
-      // If deleting current project, switch to another or create new
-      if (project.id === projectId) {
+      // If deleting current project, switch to another or show empty state
+      if (project?.id === projectId) {
         const otherIds = Object.keys(remaining);
         if (otherIds.length > 0) {
           // Switch to first remaining project
@@ -240,18 +240,15 @@ export function useProject() {
           setProjectState(nextProject);
           saveCurrentProjectId(nextProject.id);
         } else {
-          // Create new project
-          const newProj = createDefaultProject();
-          remaining[newProj.id] = newProj;
-          saveProjects(remaining);
-          setProjectState(newProj);
-          saveCurrentProjectId(newProj.id);
+          // No projects left - set to null to show empty state
+          setProjectState(null);
+          saveCurrentProjectId(null);
         }
       }
       
       return remaining;
     });
-  }, [project.id]);
+  }, [project?.id]);
 
   /**
    * Duplicate project
