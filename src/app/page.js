@@ -712,6 +712,36 @@ function ProductSetupStep({ project, setProject, onNext }) {
     setResearching(false);
   };
 
+  // Auto-fill everything with one click
+  const [autoFilling, setAutoFilling] = useState(false);
+  const autoFillAll = async () => {
+    if (!productImages.length) {
+      alert('Please upload at least one product image first');
+      return;
+    }
+    
+    setAutoFilling(true);
+    
+    try {
+      // Step 1: Analyze product if not done
+      if (!analysisResult) {
+        setResearchProgress('Analyzing product with GPT 5.2...');
+        await analyzeProducts();
+      }
+      
+      // Step 2: Run research synthesis
+      setResearchProgress('Synthesizing research with Opus 4.5...');
+      await runDeepResearch();
+      
+      setResearchProgress('Auto-fill complete!');
+    } catch (error) {
+      console.error('Auto-fill error:', error);
+      setResearchProgress(`Error: ${error.message}`);
+    }
+    
+    setAutoFilling(false);
+  };
+
   // Quick generate audience
   const quickGenerateAudience = async () => {
     try {
@@ -758,9 +788,34 @@ function ProductSetupStep({ project, setProject, onNext }) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="text-center mb-10">
+      <div className="text-center mb-6">
         <h2 className="text-3xl font-bold text-black mb-2">Product Setup</h2>
-        <p className="text-gray-500">Upload your product and define your target audience</p>
+        <p className="text-gray-500 mb-6">Upload your product and define your target audience</p>
+        
+        {/* Auto-fill Everything Button */}
+        {productImages.length > 0 && (
+          <button
+            onClick={autoFillAll}
+            disabled={autoFilling || analyzing || researching}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              autoFilling || analyzing || researching
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg hover:shadow-xl'
+            }`}
+          >
+            {autoFilling ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {researchProgress || 'Auto-filling...'}
+              </span>
+            ) : (
+              <span>⚡ Auto-fill Everything</span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Product Images Upload */}
@@ -910,37 +965,54 @@ function ProductSetupStep({ project, setProject, onNext }) {
         </div>
       </div>
 
-      {/* Supporting Documents */}
+      {/* Supporting Documents - with drag & drop */}
       <div className="card mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-black">Supporting Documents</h3>
+          <h3 className="font-semibold text-black">📁 Research Documents</h3>
           <span className="text-xs text-gray-500">{supportingDocs.length}/{MAX_DOCS} files</span>
         </div>
-        <p className="text-sm text-gray-500 mb-4">
-          Add product specs, brand guidelines, competitor info, or any docs that help with research
-        </p>
         
-        <div className="flex flex-wrap gap-2 mb-4">
-          {supportingDocs.map((doc, idx) => (
-            <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
-              <span>📄</span>
-              <span className="max-w-32 truncate">{doc.name}</span>
-              <button 
-                onClick={() => removeDoc(idx)}
-                className="text-gray-400 hover:text-red-500"
-              >×</button>
+        <div 
+          className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
+            dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          }`}
+          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+            const files = Array.from(e.dataTransfer.files).filter(f => 
+              f.type.includes('text') || f.name.endsWith('.txt') || f.name.endsWith('.md') || 
+              f.name.endsWith('.json') || f.name.endsWith('.csv') || f.name.endsWith('.pdf')
+            );
+            if (files.length) processDocuments(files);
+          }}
+          onClick={() => docInputRef.current?.click()}
+        >
+          {supportingDocs.length > 0 ? (
+            <div>
+              <div className="flex flex-wrap gap-2 justify-center mb-3">
+                {supportingDocs.map((doc, idx) => (
+                  <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+                    <span>📄</span>
+                    <span className="max-w-32 truncate">{doc.name}</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); removeDoc(idx); }}
+                      className="text-gray-400 hover:text-red-500"
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-gray-500">Drop more files or click to add</p>
             </div>
-          ))}
+          ) : (
+            <>
+              <div className="text-3xl mb-2">📄</div>
+              <p className="text-gray-600 font-medium">Drop your Perplexity research, competitor analysis, or customer feedback</p>
+              <p className="text-gray-400 text-sm mt-1">Supports .txt, .md, .json, .csv, .pdf</p>
+            </>
+          )}
         </div>
-        
-        {supportingDocs.length < MAX_DOCS && (
-          <button 
-            onClick={() => docInputRef.current?.click()}
-            className="btn-secondary text-sm"
-          >
-            + Add Document
-          </button>
-        )}
         <input 
           ref={docInputRef} 
           type="file" 
