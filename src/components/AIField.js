@@ -96,12 +96,14 @@ export function AIField({
                   setShowGuide(true);
                 }}
                 disabled={disabled || generating}
+                title="Sonnet 4.5 - Fast iterations"
                 className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg transition-all
                   bg-blue-50 text-blue-600 hover:bg-blue-100
                   ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <span>🔄</span>
                 <span>Iterate</span>
+                <span className="opacity-50 text-[10px]">(Sonnet)</span>
               </button>
             )}
             
@@ -113,6 +115,7 @@ export function AIField({
                 setShowGuide(!showGuide);
               }}
               disabled={disabled || generating}
+              title="Opus 4.5 - Full generation"
               className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg transition-all ${
                 showGuide && mode === 'generate'
                   ? 'bg-purple-100 text-purple-700' 
@@ -121,6 +124,7 @@ export function AIField({
             >
               <span>✨</span>
               <span>{hasContent ? 'Regenerate' : 'Generate'}</span>
+              <span className="opacity-50 text-[10px]">(Opus)</span>
             </button>
           </div>
         </div>

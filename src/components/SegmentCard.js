@@ -77,8 +77,9 @@ export function ARollCard({
 
       <button className="btn-secondary w-full text-sm" 
         onClick={onGenerate}
-        disabled={isGenerating}>
-        {clip ? 'Regenerate' : 'Generate'}
+        disabled={isGenerating}
+        title="Kling AI Video">
+        {clip ? 'Regenerate' : 'Generate'} <span className="text-xs opacity-60">(Kling)</span>
       </button>
     </div>
   );
@@ -156,8 +157,9 @@ export function BRollCard({
 
       <button className="btn-secondary w-full text-xs py-2" 
         onClick={onGenerate}
-        disabled={isGenerating}>
-        {broll ? 'Redo' : 'Generate'}
+        disabled={isGenerating}
+        title="Gemini Imagen 3">
+        {broll ? 'Redo' : 'Generate'} <span className="opacity-60">(Imagen 3)</span>
       </button>
     </div>
   );
@@ -234,8 +236,9 @@ export function AnimationCard({
 
       <button className="btn-secondary w-full text-xs py-2" 
         onClick={onAnimate}
-        disabled={!broll || isAnimating}>
-        {animation ? 'Re-animate' : isAnimating ? 'Processing...' : 'Animate'}
+        disabled={!broll || isAnimating}
+        title="Kling AI Image-to-Video">
+        {animation ? 'Re-animate' : isAnimating ? 'Processing...' : 'Animate'} <span className="opacity-60">(Kling)</span>
       </button>
     </div>
   );

@@ -812,7 +812,10 @@ function ProductSetupStep({ project, setProject, onNext }) {
                 {researchProgress || 'Auto-filling...'}
               </span>
             ) : (
-              <span>⚡ Auto-fill Everything</span>
+              <span className="flex flex-col items-center">
+                <span>⚡ Auto-fill Everything</span>
+                <span className="text-xs opacity-75 font-normal">GPT 5.2 + Opus 4.5</span>
+              </span>
             )}
           </button>
         )}
@@ -887,7 +890,10 @@ function ProductSetupStep({ project, setProject, onNext }) {
                   Analyzing with AI...
                 </span>
               ) : (
-                <span>✨ Analyze Product with AI</span>
+                <span className="flex flex-col items-center">
+                  <span>✨ Analyze Product with AI</span>
+                  <span className="text-xs opacity-75 font-normal">GPT 5.2 Vision</span>
+                </span>
               )}
             </button>
             
@@ -1053,8 +1059,9 @@ function ProductSetupStep({ project, setProject, onNext }) {
                 <button 
                   onClick={quickGenerateAudience}
                   className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                  title="Uses Sonnet 4.5"
                 >
-                  ✨ AI Quick Generate
+                  ✨ Quick Generate <span className="opacity-60">(Sonnet)</span>
                 </button>
               </div>
               <textarea 
@@ -1094,7 +1101,10 @@ function ProductSetupStep({ project, setProject, onNext }) {
                   Synthesizing...
                 </span>
               ) : (
-                <span>🧠 Synthesize Research</span>
+                <span className="flex flex-col items-center">
+                  <span>🧠 Synthesize Research</span>
+                  <span className="text-xs opacity-75 font-normal">Opus 4.5</span>
+                </span>
               )}
             </button>
           </div>
@@ -1350,8 +1360,8 @@ function CharacterStep({ project, setProject, advancedSettings, setAdvancedSetti
             </select>
           </div>
 
-          <button className="btn-secondary w-full" onClick={generateCharacter} disabled={generating}>
-            {generating ? 'Generating...' : '1. Generate Prompt'}
+          <button className="btn-secondary w-full" onClick={generateCharacter} disabled={generating} title="Opus 4.5">
+            {generating ? 'Generating...' : '1. Generate Prompt'} <span className="text-xs opacity-60">(Opus)</span>
           </button>
         </div>
 
@@ -1369,7 +1379,7 @@ function CharacterStep({ project, setProject, advancedSettings, setAdvancedSetti
           </div>
 
           {characterPrompt && (
-            <button className="btn-primary w-full" onClick={generateImage} disabled={generatingImage}>
+            <button className="btn-primary w-full" onClick={generateImage} disabled={generatingImage} title="Gemini Imagen 3">
               {generatingImage ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -1378,7 +1388,7 @@ function CharacterStep({ project, setProject, advancedSettings, setAdvancedSetti
                   </svg>
                   Generating...
                 </span>
-              ) : '2. Generate Image'}
+              ) : <><span>2. Generate Image</span> <span className="text-xs opacity-75 font-normal">(Imagen 3)</span></>}
             </button>
           )}
 
@@ -1566,6 +1576,7 @@ function ScriptStep({ project, setProject, onNext, onBack }) {
             className="btn-primary w-full"
             onClick={generateScript}
             disabled={generating}
+            title="Opus 4.5"
           >
             {generating ? (
               <span className="flex items-center justify-center gap-2">
@@ -1575,7 +1586,7 @@ function ScriptStep({ project, setProject, onNext, onBack }) {
                 </svg>
                 Generating Script...
               </span>
-            ) : 'Generate Script with AI'}
+            ) : <><span>Generate Script with AI</span> <span className="text-xs opacity-75 font-normal">(Opus 4.5)</span></>}
           </button>
         )}
 
@@ -1607,8 +1618,9 @@ function ScriptStep({ project, setProject, onNext, onBack }) {
               <button 
                 className="btn-secondary text-sm"
                 onClick={chunkScript}
+                title="Sonnet 4.5"
               >
-                Auto-Chunk
+                Auto-Chunk <span className="text-xs opacity-60">(Sonnet)</span>
               </button>
             </div>
             
@@ -1997,6 +2009,7 @@ function VoiceStep({ project, setProject, advancedSettings, setAdvancedSettings,
           className="btn-primary w-full"
           onClick={generateVoice}
           disabled={generating || !selectedVoice}
+          title="ElevenLabs TTS"
         >
           {generating ? (
             <span className="flex items-center justify-center gap-2">
@@ -2006,7 +2019,7 @@ function VoiceStep({ project, setProject, advancedSettings, setAdvancedSettings,
               </svg>
               Generating Voice...
             </span>
-          ) : 'Generate Voiceover'}
+          ) : <><span>Generate Voiceover</span> <span className="text-xs opacity-75 font-normal">(ElevenLabs)</span></>}
         </button>
 
         {/* Audio Preview */}
